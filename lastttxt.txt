@@ -1,0 +1,236 @@
+// Firebase imports
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js';
+import { 
+    getAuth, 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    onAuthStateChanged,
+    signOut 
+} from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js';
+import { 
+    getDatabase, 
+    ref, 
+    set, 
+    get 
+} from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
+
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyCQkkRBTquigA2i67vR_RCY9dmggUOO--I",
+    authDomain: "pawm-backend.firebaseapp.com",
+    databaseURL: "https://pawm-backend-default-rtdb.asia-southeast1.firebasedatabase.app/",
+    projectId: "pawm-backend",
+    storageBucket: "pawm-backend.firebasestorage.app",
+    messagingSenderId: "530232094361",
+    appId: "1:530232094361:web:f063c516cd162233809208",
+    measurementId: "G-NCFQYXR9TM"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+// Drag and Drop functionality
+function initializeDragAndDrop() {
+    const blocks = document.querySelectorAll('.block');
+    const dropzones = document.querySelectorAll('.drop-zone');
+
+    blocks.forEach(block => {
+        block.addEventListener('dragstart', handleDragStart);
+        block.addEventListener('dragend', handleDragEnd);
+    });
+
+    dropzones.forEach(dropzone => {
+        dropzone.addEventListener('dragover', handleDragOver);
+        dropzone.addEventListener('drop', handleDrop);
+    });
+}
+
+function handleDragStart(e) {
+    e.target.classList.add('dragging');
+    e.dataTransfer.setData('text/plain', e.target.textContent);
+}
+
+function handleDragEnd(e) {
+    e.target.classList.remove('dragging');
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    const data = e.dataTransfer.getData('text/plain');
+    const newBlock = document.createElement('div');
+    newBlock.className = 'block';
+    newBlock.draggable = true;
+    newBlock.textContent = data;
+    newBlock.addEventListener('dragstart', handleDragStart);
+    newBlock.addEventListener('dragend', handleDragEnd);
+    e.target.appendChild(newBlock);
+}
+
+// Question navigation
+window.showQuestion = function(questionNumber) {
+    document.querySelectorAll('.question').forEach(q => q.classList.remove('active'));
+    document.querySelectorAll('.question-item').forEach(q => q.classList.remove('active'));
+    
+    document.getElementById(`question${questionNumber}`).classList.add('active');
+    document.querySelector(`.question-item:nth-child(${questionNumber})`).classList.add('active');
+};
+
+// Score management
+async function saveUserScore(userId, questionNumber, score) {
+    if (!userId) {
+        showFailure("Please sign in to save your progress");
+        return false;
+    }
+
+    try {
+        const userScoreRef = ref(db, `scores/${userId}`);
+        const snapshot = await get(userScoreRef);
+        let existingData = snapshot.val() || {};
+        
+        // Update specific question score
+        existingData[`question${questionNumber}`] = {
+            score: score,
+            timestamp: Date.now()
+        };
+
+        // Calculate total score
+        let totalScore = 0;
+        for (let i = 1; i <= 4; i++) {
+            if (existingData[`question${i}`]) {
+                totalScore += existingData[`question${i}`].score;
+            }
+        }
+        existingData.totalScore = totalScore;
+
+        await set(userScoreRef, existingData);
+        return true;
+    } catch (error) {
+        console.error("Error saving score:", error);
+        showFailure("Failed to save score");
+        return false;
+    }
+}
+
+async function getUserScores(userId) {
+    if (!userId) return null;
+    
+    try {
+        const userScoreRef = ref(db, `scores/${userId}`);
+        const snapshot = await get(userScoreRef);
+        return snapshot.val() || {};
+    } catch (error) {
+        console.error("Error getting scores:", error);
+        return null;
+    }
+}
+
+// Check answer order
+window.checkOrder = async function(questionNumber) {
+    const user = auth.currentUser;
+    if (!user) {
+        showFailure("Please sign in to submit answers");
+        return;
+    }
+
+    const dropzone = document.getElementById(`dropzone${questionNumber}`);
+    const userOrder = Array.from(dropzone.children)
+        .map(block => block.textContent.trim());
+
+    const correctAnswers = {
+        1: ["def evenOdd():", "if (x % 2 == 0):", "print(\"even\")", "else:", "print(\"odd\")"],
+        2: ["def greet():", "print(\"Hello, world!\")", "greet()"],
+        3: ["x = 5", "if x > 3:", "print(\"x is greater than 3\")"],
+        4: ["for i in range(3):", "print(i)"]
+    };
+
+    const isCorrect = JSON.stringify(userOrder) === JSON.stringify(correctAnswers[questionNumber]);
+    const score = isCorrect ? 10 : 0;
+    const feedback = document.getElementById('feedback');
+
+    feedback.textContent = isCorrect ? "Correct! Well done!" : "Not quite right. Try again!";
+    feedback.style.color = isCorrect ? "green" : "red";
+
+    const saved = await saveUserScore(user.uid, questionNumber, score);
+    if (saved && isCorrect) {
+        showSuccess(`Great job! You earned ${score} points!`);
+    }
+    
+    updateScoreDisplay(user.uid);
+};
+
+// Update score display
+async function updateScoreDisplay(userId) {
+    if (!userId) return;
+
+    const scores = await getUserScores(userId);
+    if (!scores) return;
+
+    // Update total score
+    const totalScore = scores.totalScore || 0;
+    const totalScoreElement = document.getElementById('score');
+    if (totalScoreElement) {
+        totalScoreElement.textContent = `Total Score: ${totalScore}/40`;
+    }
+
+    // Update individual question scores
+    for (let i = 1; i <= 4; i++) {
+        const questionScore = scores[`question${i}`]?.score || 0;
+        const questionScoreElement = document.getElementById(`question${i}Score`);
+        if (questionScoreElement) {
+            questionScoreElement.textContent = `Question ${i} Score: ${questionScore}/10`;
+        }
+    }
+}
+
+// UI feedback functions
+function showSuccess(message) {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'success-popup';
+    successDiv.innerHTML = `
+        <div class="success-content">
+            <div class="success-icon">✓</div>
+            <div class="success-message">${message}</div>
+        </div>
+    `;
+    document.body.appendChild(successDiv);
+    
+    setTimeout(() => successDiv.classList.add('show'), 30);
+    setTimeout(() => {
+        successDiv.classList.remove('show');
+        setTimeout(() => document.body.removeChild(successDiv), 300);
+    }, 2000);
+}
+
+function showFailure(message) {
+    const failureDiv = document.createElement('div');
+    failureDiv.className = 'failure-popup';
+    failureDiv.innerHTML = `
+        <div class="failure-content">
+            <div class="failure-icon">✗</div>
+            <div class="failure-message">${message}</div>
+        </div>
+    `;
+    document.body.appendChild(failureDiv);
+    
+    setTimeout(() => failureDiv.classList.add('show'), 30);
+    setTimeout(() => {
+        failureDiv.classList.remove('show');
+        setTimeout(() => document.body.removeChild(failureDiv), 300);
+    }, 2000);
+}
+
+// Authentication state observer
+onAuthStateChanged(auth, (user) => {
+    const signInLink = document.getElementById("signInLink");
+    const profileLink = document.getElementById("profileLink");
+    const logoutLink = document.getElementById("logoutLink");
+
+    if (signInLink && profileLink && logoutLink) {
+        signInLink.style.display = user ? "none" : "block";
+        profileLink.style.

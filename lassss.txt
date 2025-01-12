@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Practice - LetsCoding</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styled.css">
+    <script type="module" src="/script.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="navbar">
+            <div class="logo"><a href="#">LetsCoding</a></div>
+            <div class="nav-item"><a href="../homepage.html">Home</a></div>
+            <div class="nav-item"><a href="project.html">Project</a></div>
+            <div class="nav-item"><a href="course.html">Courses</a></div>
+            <div class="nav-item"><a href="practice.html">Practice</a></div>
+            <div class="nav-item sign-in">
+                <a href="login.html" id="signInLink">Sign in</a>
+            </div>
+            <div class="nav-item" id="logoutLink" style="display: none;">
+                <a href="#" id="logoutButton">Logout</a>
+            </div>
+            <div class="nav-item sign-in" id="profileLink" style="display: none;">
+                <a href="profile.html">Profile</a>
+            </div>
+        </div>
+    </div>
+    <div class="main-container">
+        <div class="content">
+            <h1>Python Basic Practice</h1>
+        </div>
+
+        <div class="drag-container">
+            <div class="left-section">
+                <h2>Question Numbers</h2>
+                <div class="question-list">
+                    <div class="question-item active" onclick="showQuestion(1)">1</div>
+                    <div class="question-item" onclick="showQuestion(2)">2</div>
+                    <div class="question-item" onclick="showQuestion(3)">3</div>
+                    <div class="question-item" onclick="showQuestion(4)">4</div>
+                </div>
+            </div>
+            
+            <div class="right-section">
+                <h2>Arrange the code in correct order</h2>
+
+                <!-- Question 1 -->
+                <div id="question1" class="question">
+                    <div id="codeBlocks1" class="code-blocks">
+                        <div class="block" draggable="true">def evenOdd():</div>
+                        <div class="block" draggable="true">if (x % 2 == 0):</div>
+                        <div class="block" draggable="true">    print("even")</div>
+                        <div class="block" draggable="true">else:</div>
+                        <div class="block" draggable="true">    print("odd")</div>
+                    </div>
+                    <div id="dropzone1" class="drop-zone">
+                        <p>Drop the code blocks here in the correct order</p>
+                    </div>
+                    <button class="submit-btn" onclick="checkAnswer(1)">Submit</button>
+                </div>
+
+                <!-- Question 2 -->
+                <div id="question2" class="question" style="display: none;">
+                    <div id="codeBlocks2" class="code-blocks">
+                        <div class="block" draggable="true">def greet():</div>
+                        <div class="block" draggable="true">    print("Hello, world!")</div>
+                        <div class="block" draggable="true">greet()</div>
+                    </div>
+                    <div id="dropzone2" class="drop-zone">
+                        <p>Drop the code blocks here in the correct order</p>
+                    </div>
+                    <button class="submit-btn" onclick="checkAnswer(2)">Submit</button>
+                </div>
+
+                <!-- Question 3 -->
+                <div id="question3" class="question" style="display: none;">
+                    <div id="codeBlocks3" class="code-blocks">
+                        <div class="block" draggable="true">x = 5</div>
+                        <div class="block" draggable="true">if x > 3:</div>
+                        <div class="block" draggable="true">    print("x is greater than 3")</div>
+                    </div>
+                    <div id="dropzone3" class="drop-zone">
+                        <p>Drop the code blocks here in the correct order</p>
+                    </div>
+                    <button class="submit-btn" onclick="checkAnswer(3)">Submit</button>
+                </div>
+
+                <!-- Question 4 -->
+                <div id="question4" class="question" style="display: none;">
+                    <div id="codeBlocks4" class="code-blocks">
+                        <div class="block" draggable="true">for i in range(3):</div>
+                        <div class="block" draggable="true">    print(i)</div>
+                    </div>
+                    <div id="dropzone4" class="drop-zone">
+                        <p>Drop the code blocks here in the correct order</p>
+                    </div>
+                    <button class="submit-btn" onclick="checkAnswer(4)">Submit</button>
+                </div>
+
+                <div id="feedback" class="feedback"></div>
+                <div id="score" class="score"></div>
+
+                <!-- Submit button to save the score -->
+                <button id="submitScore">Save Score</button>
+            </div>
+        </div>
+        <!-- Footer Section (same as homepage) -->
+        <div class="footer">
+            <div class="footer-links">
+                <a href="../homepage.html">Home</a>
+                <a href="practice.html">Practice</a>
+                <a href="course.html">Courses</a>
+                <a href="project.html">Project</a>
+            </div>
+            <p>&copy; 2024 LetsCoding. All Rights Reserved.</p>
+        </div> 
+        
+    </div>
+
+    <script>
+        let currentQuestion = 1;
+        let score = 0;
+        let draggedItem = null;
+
+        const correctAnswers = {
+            1: ["def evenOdd():", "if (x % 2 == 0):", "    print(\"even\")", "else:", "    print(\"odd\")"],
+            2: ["def greet():", "    print(\"Hello, world!\")", "greet()"],
+            3: ["x = 5", "if x > 3:", "    print(\"x is greater than 3\")"],
+            4: ["for i in range(3):", "    print(i)"]
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeDragAndDrop();
+        });
+
+        function initializeDragAndDrop() {
+            const blocks = document.querySelectorAll('.block');
+            const dropZones = document.querySelectorAll('.drop-zone');
+            const codeBlocks = document.querySelectorAll('.code-blocks');
+
+            blocks.forEach(block => {
+                block.addEventListener('dragstart', handleDragStart);
+                block.addEventListener('dragend', handleDragEnd);
+            });
+
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', handleDragOver);
+                zone.addEventListener('dragenter', handleDragEnter);
+                zone.addEventListener('dragleave', handleDragLeave);
+                zone.addEventListener('drop', handleDrop);
+            });
+
+            codeBlocks.forEach(zone => {
+                zone.addEventListener('dragover', handleDragOver);
+                zone.addEventListener('dragenter', handleDragEnter);
+                zone.addEventListener('dragleave', handleDragLeave);
+                zone.addEventListener('drop', handleDrop);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedItem = e.target;
+            e.target.style.opacity = '0.5';
+        }
+
+        function handleDragEnd(e) {
+            e.target.style.opacity = '1';
+            document.querySelectorAll('.code-blocks').forEach(zone => {
+                zone.classList.remove('dragover');
+            });
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.style.backgroundColor = '#F0F0F5';
+            });
+            draggedItem = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            const target = e.target.closest('.drop-zone') || e.target.closest('.code-blocks');
+            
+            if (target) {
+                if (target.classList.contains('drop-zone')) {
+                    target.style.backgroundColor = '#FCE4D6';
+                } else if (target.classList.contains('code-blocks')) {
+                    target.classList.add('dragover');
+                }
+            }
+        }
+
+        function handleDragLeave(e) {
+            const target = e.target.closest('.drop-zone') || e.target.closest('.code-blocks');
+            
+            if (target) {
+                if (target.classList.contains('drop-zone')) {
+                    target.style.backgroundColor = '#F0F0F5';
+                } else if (target.classList.contains('code-blocks')) {
+                    target.classList.remove('dragover');
+                }
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            let dropTarget = e.target.closest('.drop-zone') || e.target.closest('.code-blocks');
+            
+            if (dropTarget && draggedItem) {
+                // Clear instruction text if dropping into drop-zone
+                if (dropTarget.classList.contains('drop-zone') && !dropTarget.querySelector('.block')) {
+                    dropTarget.innerHTML = '';
+                }
+                
+                const clone = draggedItem.cloneNode(true);
+                clone.draggable = true;
+                clone.addEventListener('dragstart', handleDragStart);
+                clone.addEventListener('dragend', handleDragEnd);
+                
+                // Remove the original item
+                draggedItem.remove();
+                
+                // Add to appropriate container
+                dropTarget.appendChild(clone);
+                
+                // Reset styles
+                if (dropTarget.classList.contains('drop-zone')) {
+                    dropTarget.style.backgroundColor = '#F0F0F5';
+                } else {
+                    dropTarget.classList.remove('dragover');
+                }
+                
+                // Show drop zone instruction if empty
+                const dropZone = document.getElementById(`dropzone${currentQuestion}`);
+                if (!dropZone.hasChildNodes()) {
+                    dropZone.innerHTML = '<p>Drop the code blocks here in the correct order</p>';
+                }
+            }
+        }
+
+        function showQuestion(num) {
+            document.querySelectorAll('.question').forEach(q => q.style.display = 'none');
+            document.getElementById(`question${num}`).style.display = 'block';
+            
+            document.querySelectorAll('.question-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll('.question-item')[num-1].classList.add('active');
+            
+            const dropZone = document.getElementById(`dropzone${num}`);
+            dropZone.innerHTML = '<p>Drop the code blocks here in the correct order</p>';
+            
+            currentQuestion = num;
+        }
+
+        function checkAnswer(questionNum) {
+            const dropZone = document.getElementById(`dropzone${questionNum}`);
+            const submittedBlocks = Array.from(dropZone.querySelectorAll('.block'));
+            const submittedAnswer = submittedBlocks.map(block => block.textContent);
+            const correctAnswer = correctAnswers[questionNum];
+
+            const feedback = document.getElementById('feedback');
+            const isCorrect = arraysEqual(submittedAnswer, correctAnswer);
+
+            if (isCorrect) {
+                score += 10;
+                feedback.textContent = 'Correct! Well done!';
+                feedback.style.color = '#28a745';
+                
+                if (questionNum < 4) {
+                    setTimeout(() => showQuestion(questionNum + 1), 1500);
+                }
+            } else {
+                feedback.textContent = 'Incorrect. Try again!';
+                feedback.style.color = '#dc3545';
+            }
+
+            document.getElementById('score').textContent = `Score: ${score} /40`;
+             // Update the score display dynamically
+            document.getElementById('userScore').textContent = score; // Update the score in the HTML
+
+            
+        }
+
+        function arraysEqual(arr1, arr2) {
+            if (arr1.length !== arr2.length) return false;
+            return arr1.every((value, index) => value === arr2[index]);
+        }
+    </script>
+</body>
+</html>

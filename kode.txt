@@ -1,0 +1,490 @@
+const blocks = document.querySelectorAll('.block');
+const dropzone = document.getElementById('dropzone');
+const codeBlocks = document.getElementById('codeBlocks');
+const feedback = document.getElementById('feedback');
+
+let draggedBlock = null;
+
+blocks.forEach(block => {
+    block.addEventListener('dragstart', function() {
+        draggedBlock = block;
+        setTimeout(function() {
+            block.style.display = 'none'; // Hide the block during drag
+        }, 0);
+    });
+
+    block.addEventListener('dragend', function() {
+        setTimeout(function() {
+            draggedBlock.style.display = 'block'; // Show the block after drop
+            draggedBlock = null;
+        }, 0);
+    });
+});
+
+// Allow dropping in drop zone
+// dropzone.addEventListener('dragover', function(e) {
+//     e.preventDefault(); // Allow the drop
+// });
+
+// dropzone.addEventListener('drop', function(e) {
+//     e.preventDefault();
+//     if (draggedBlock) {
+//         dropzone.appendChild(draggedBlock); // Append block to dropzone
+//     }
+// });
+
+// Allow dragging back to code blocks
+// codeBlocks.addEventListener('dragover', function(e) {
+//     e.preventDefault(); // Allow the drop
+// });
+
+// codeBlocks.addEventListener('drop', function(e) {
+//     e.preventDefault();
+//     if (draggedBlock) {
+//         codeBlocks.appendChild(draggedBlock); // Append block back to code blocks
+//     }
+// });
+
+// Check if the order is correct
+function checkOrder() {
+    const correctOrder = ["line3", "line2", "line4", "line1","line5"];
+    let userOrder = Array.from(dropzone.children).map(block => block.id);
+
+    if (JSON.stringify(userOrder) === JSON.stringify(correctOrder)) {
+        feedback.textContent = "Correct Order!";
+        feedback.style.color = "green";
+    } else {
+        feedback.textContent = "Incorrect Order. Please try again.";
+        feedback.style.color = "red";
+    }
+}
+
+// Import Firebase SDK
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js'
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js'
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js'
+import { getFirestore } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js'
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js';
+
+// Your Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyCQkkRBTquigA2i67vR_RCY9dmggUOO--I",
+    authDomain: "pawm-backend.firebaseapp.com",
+    projectId: "pawm-backend",
+    storageBucket: "pawm-backend.firebasestorage.app",
+    messagingSenderId: "530232094361",
+    appId: "1:530232094361:web:f063c516cd162233809208",
+    measurementId: "G-NCFQYXR9TM"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+
+
+// Initialize Firebase authentication state observer
+onAuthStateChanged(auth, (user) => {
+    toggleProfileButton(!!user); // Show profile if user is logged in
+});
+
+
+const showSuccess = (message) => {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'success-popup';
+    successDiv.innerHTML = `
+        <div class="success-content">
+            <div class="success-icon">✓</div>
+            <div class="success-message">${message}</div>
+        </div>
+    `;
+    document.body.appendChild(successDiv);
+
+    // Trigger animation by adding the 'show' class
+    setTimeout(() => {
+        successDiv.classList.add('show');
+    }, 30);
+
+    // Remove popup after showing and redirect
+    setTimeout(() => {
+        successDiv.classList.remove('show');
+        setTimeout(() => {
+            document.body.removeChild(successDiv);
+            window.location.href = "../homepage.html"; // Redirect after popup disappears
+        }, 300);
+    }, 2000);
+};
+
+// Helper function to show error message
+const showError = (message) => {
+    const errorDiv = document.getElementById('error-message');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    errorDiv.style.opacity = '1';
+    
+    // Add error shake animation
+    errorDiv.classList.add('error-shake');
+    setTimeout(() => {
+        errorDiv.classList.remove('error-shake');
+    }, 500);
+    
+    // Optional: Add CSS class for styling
+    errorDiv.classList.add('error-message');
+    
+    // Clear error after 5 seconds with fade effect
+    setTimeout(() => {
+        errorDiv.style.opacity = '0';
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+            errorDiv.classList.remove('error-message');
+        }, 300);
+    }, 5000);
+};
+
+
+// Function to toggle between forms
+// const toggleForms = (showSignUp) => {
+//     const loginCard = document.getElementById('loginCard');
+//     const signupCard = document.getElementById('signupCard');
+    
+//     if (showSignUp) {
+//         loginCard.style.display = 'none';
+//         signupCard.style.display = 'block';
+//     } else {
+//         signupCard.style.display = 'none';
+//         loginCard.style.display = 'block';
+//     }
+// };
+
+// Wait for DOM to load
+document.addEventListener("DOMContentLoaded", () => {
+    // Add event listeners for form toggling
+    document.getElementById('showSignUpLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleForms(true);
+    });
+
+    document.getElementById('showSignInLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleForms(false);
+    });
+
+    const signinForm = document.getElementById("signin-form");
+    // Sign-In form handler (unchanged except for success handling)
+    if (signinForm) { // Check if signinForm exists
+        // Sign-In form handler
+        signinForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            toggleLoading(true);
+
+            const email = document.getElementById("signin-email").value;
+            const password = document.getElementById("signin-password").value;
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                console.log("User signed in:", userCredential.user);
+                showSuccess("Sign in successful! Redirecting...");
+                toggleProfileButton(true); // Toggle to "Profile" button after login
+            } catch (error) {
+                console.error("Error signing in:", error);
+                showError(error.message);
+            } finally {
+                toggleLoading(false);
+            }
+        });
+    } else {
+        console.warn("Sign-in form element not found.");
+    }
+
+    // Sign-Up form handler
+    const signupForm = document.getElementById("signup-form");
+    signupForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        toggleLoading(true);
+
+        const email = document.getElementById("signup-email").value;
+        const password = document.getElementById("signup-password").value;
+        const nim = document.getElementById("signup-nim").value;
+
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            console.log("User signed up:", userCredential.user);
+            showSuccess("Sign up successful! Redirecting..."); // Show success popup
+            // window.location.href = "../homepage.html";
+        } catch (error) {
+            console.error("Error signing up:", error);
+            showError(error.message);
+        } finally {
+            toggleLoading(false);
+        }
+    });
+});
+
+// Check authentication state
+// onAuthStateChanged(auth, (user) => {
+//     if (user) {
+//         console.log("User is signed in:", user.email);
+//         const userEmail = document.getElementById("user-email");
+//         if (userEmail) userEmail.innerText = user.email;
+//     } else {
+//         console.log("No user signed in");
+//         const userEmail = document.getElementById("user-email");
+//         if (userEmail) userEmail.innerText = "Not signed in";
+//     }
+// });
+
+// Previous imports and Firebase config remain the same
+
+// Function to toggle between forms with focus
+const toggleForms = (showSignUp) => {
+    const loginCard = document.getElementById('loginCard');
+    const signupCard = document.getElementById('signupCard');
+    
+    if (showSignUp) {
+        loginCard.style.display = 'none';
+        signupCard.style.display = 'block';
+        // Focus on the first input field of signup form
+        setTimeout(() => {
+            document.getElementById('signup-email').focus();
+        }, 100); // Small delay to ensure the form is visible
+    } else {
+        signupCard.style.display = 'none';
+        loginCard.style.display = 'block';
+        // Focus on the first input field of login form
+        setTimeout(() => {
+            document.getElementById('signin-email').focus();
+        }, 100);
+    }
+};
+
+// Form validation functions
+const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+};
+
+const validatePassword = (password) => {
+    // At least 8 characters, 1 letter, and 1 number
+    const re = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    return re.test(password);
+};
+
+const validateNIM = (nim) => {
+    // Assuming NIM is numeric and has a specific length (adjust as needed)
+    return /^\d{8,10}$/.test(nim);
+};
+
+
+
+
+// Wait for DOM to load
+document.addEventListener("DOMContentLoaded", () => {
+    // Add event listeners for form toggling with improved navigation
+    document.getElementById('showSignUpLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleForms(true);
+    });
+
+    document.getElementById('showSignInLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleForms(false);
+    });
+
+    const signinForm = document.getElementById("signin-form");
+    signinForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        toggleLoading(true);
+        
+        const email = document.getElementById("signin-email").value;
+        const password = document.getElementById("signin-password").value;
+
+        // Validate input
+        if (!validateEmail(email)) {
+            showError("Please enter a valid email address");
+            toggleLoading(false);
+            return;
+        }
+
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            console.log("User signed in:", userCredential.user);
+            
+            // Show success message and redirect after animation
+            showSuccess("Sign in successful! Redirecting...");
+            
+            // Wait for the success message animation before redirecting
+            setTimeout(() => {
+                window.location.href = "../homepage.html";
+            }, 2000);
+            
+        } catch (error) {
+            console.error("Error signing in:", error);
+            
+            // Provide user-friendly error messages based on error code
+            switch (error.code) {
+                case 'auth/invalid-credential':
+                    showError("Invalid email or password. Please try again.");
+                    break;
+                case 'auth/user-disabled':
+                    showError("This account has been disabled. Please contact support.");
+                    break;
+                case 'auth/user-not-found':
+                    showError("No account found with this email. Please sign up first.");
+                    break;
+                case 'auth/wrong-password':
+                    showError("Incorrect password. Please try again.");
+                    break;
+                case 'auth/too-many-requests':
+                    showError("Too many failed attempts. Please try again later.");
+                    break;
+                case 'auth/network-request-failed':
+                    showError("Network error. Please check your internet connection.");
+                    break;
+                default:
+                    showError("An error occurred during sign in. Please try again.");
+            }
+            
+            // Clear password field on error
+            document.getElementById("signin-password").value = "";
+            
+            // Optional: Focus on the appropriate field based on error
+            if (error.code === 'auth/user-not-found') {
+                document.getElementById("signin-email").focus();
+            } else if (error.code === 'auth/wrong-password') {
+                document.getElementById("signin-password").focus();
+            }
+        } finally {
+            toggleLoading(false);
+        }
+    });
+
+    // Sign-Up form handler
+    const signupForm = document.getElementById("signup-form");
+    signupForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        toggleLoading(true);
+
+        const email = document.getElementById("signup-email").value;
+        const password = document.getElementById("signup-password").value;
+        const nim = document.getElementById("signup-nim").value;
+
+        // Validate input
+        if (!validateEmail(email)) {
+            showError("Please enter a valid email address");
+            toggleLoading(false);
+            return;
+        }
+
+        if (!validatePassword(password)) {
+            showError("Password must be at least 8 characters long and include both letters and numbers");
+            toggleLoading(false);
+            return;
+        }
+
+        if (!validateNIM(nim)) {
+            showError("Please enter a valid NIM");
+            toggleLoading(false);
+            return;
+        }
+
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            
+            // You could store additional user data (like NIM) in a database here
+            console.log("User signed up:", user);
+            
+            window.location.href = "../homepage.html";
+        } catch (error) {
+            console.error("Error signing up:", error);
+            showError(error.message);
+        } finally {
+            toggleLoading(false);
+        }
+    });
+
+    // Add input validation on blur
+    document.getElementById('signup-email').addEventListener('blur', function() {
+        if (this.value && !validateEmail(this.value)) {
+            this.classList.add('invalid');
+            showError("Please enter a valid email address");
+        } else {
+            this.classList.remove('invalid');
+        }
+    });
+
+    document.getElementById('signup-password').addEventListener('blur', function() {
+        if (this.value && !validatePassword(this.value)) {
+            this.classList.add('invalid');
+            showError("Password must be at least 8 characters long and include both letters and numbers");
+        } else {
+            this.classList.remove('invalid');
+        }
+    });
+
+    document.getElementById('signup-nim').addEventListener('blur', function() {
+        if (this.value && !validateNIM(this.value)) {
+            this.classList.add('invalid');
+            showError("Please enter a valid NIM");
+        } else {
+            this.classList.remove('invalid');
+        }
+    });
+});
+
+// Previous authentication state check remains the same
+
+
+// Make functions globally accessible
+// window.signIn = signIn;
+// window.signUp = signUp;
+// window.showSignInForm = showSignInForm;
+// window.showSignUpForm = showSignUpForm;
+
+// document.addEventListener("DOMContentLoaded",()=>{
+//     const loginForm = document.getElementById("formlogin");
+
+//     loginForm.addEventListener("submit", async(event) => {
+//         event.preventDefault();
+
+//         signIn();
+//     })
+// });
+
+// Helper function to show/hide loading spinner
+const toggleLoading = (show) => {
+    const spinner = document.getElementById('loading-spinner');
+    const buttons = document.querySelectorAll('.login-btn');
+    
+    if (show) {
+        spinner.style.display = 'flex';
+        buttons.forEach(btn => {
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+        });
+    } else {
+        spinner.style.display = 'none';
+        buttons.forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        });
+    }
+};
+
+// Function to show "Profile" button and hide "Sign In" button upon successful login
+const toggleProfileButton = (isLoggedIn) => {
+    const signInLink = document.getElementById("signInLink");
+    const profileLink = document.getElementById("profileLink");
+
+    if (signInLink && profileLink) { // Check if elements exist
+        if (isLoggedIn) {
+            signInLink.style.display = "none";
+            profileLink.style.display = "block";
+        } else {
+            signInLink.style.display = "block";
+            profileLink.style.display = "none";
+        }
+    } else {
+        console.warn("SignIn or Profile link elements not found.");
+    }
+};
